@@ -21,7 +21,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { useRouterState } from "@tanstack/react-router";
 import { Link, useNavigate } from "@/lib/router-compat";
-import { useUrlStyle } from "@/hooks/useUrlStyle";
 import { useIdentitySpace } from "@/hooks/useIdentitySpace";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin, clearAdminRoleCache } from "@/hooks/useIsAdmin";
