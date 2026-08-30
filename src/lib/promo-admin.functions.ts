@@ -16,6 +16,7 @@ export const createPromoCode = createServerFn({ method: "POST" })
         maxRedemptions: z.number().int().min(0).max(100_000).optional(),
         expiresAt: z.string().trim().max(40).optional(),
         email: z.string().trim().email().max(255).optional().or(z.literal("")),
+        phone: z.string().trim().max(24).optional().or(z.literal("")),
         language: z.enum(["nl", "en", "fr", "de"]).optional(),
       })
       .parse(data ?? {}),
