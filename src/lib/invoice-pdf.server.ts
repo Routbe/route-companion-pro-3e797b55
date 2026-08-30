@@ -7,6 +7,18 @@
  * een groot, sterk vervaagd "ROUT"-watermerk gedraaid in de zijmarge.
  */
 
+import { DEFAULT_VAT_RATE, vatBreakdown } from "./invoice-vat";
+
+/** Handelsgegevens van de verkoper; overschrijfbaar via de omgeving. */
+export function merchantDetails() {
+  return {
+    name: process.env["ROUT_COMPANY_NAME"] ?? "ROUT",
+    address: process.env["ROUT_COMPANY_ADDRESS"] ?? "Belgie",
+    vat: process.env["ROUT_VAT_NUMBER"] ?? "BTW-nummer op aanvraag",
+    email: process.env["ROUT_BILLING_EMAIL"] ?? "hallo@rout.be",
+  };
+}
+
 export interface InvoiceLine {
   label: string;
   amountCents: number;
@@ -27,6 +39,12 @@ export interface InvoiceData {
   currency?: string;
   paymentMethod?: string;
   reference?: string;
+  /** Factuuradres van de koper (vrije regels), indien bekend. */
+  billingAddress?: string[];
+  /** Btw-tarief in procent; standaard 21% (Belgie/EU). */
+  vatRatePercent?: number;
+  /** Transactie-ID bij de betaalprovider (Stripe/bunq). */
+  transactionId?: string;
 }
 
 const CHARCOAL = "0.086 0.094 0.106";
@@ -119,7 +137,9 @@ function buildContent(data: InvoiceData): string {
   out += text(W - 200, y - 22, 8.5, "R", `Nr. ${data.invoiceNumber}`, MUTED);
   out += text(W - 200, y - 34, 8.5, "R", data.issuedAt.toISOString().slice(0, 10), MUTED);
 
-  y -= 62;
+  out += text(84, y - 32, 8, "R", merchantDetails().vat, MUTED);
+
+  y -= 74;
   out += line(56, y, W - 56, y);
 
   y -= 34;
@@ -134,6 +154,11 @@ function buildContent(data: InvoiceData): string {
     cy -= 14;
     out += text(56, cy, 9.5, "R", data.customerEmail, MUTED);
   }
+  for (const addressLine of data.billingAddress ?? []) {
+    if (!addressLine.trim()) continue;
+    cy -= 13;
+    out += text(56, cy, 9.5, "R", addressLine.trim(), MUTED);
+  }
   if (data.customerId?.trim()) {
     cy -= 14;
     out += text(56, cy, 8.5, "R", `Klant-ID ${data.customerId.trim()}`, MUTED);
@@ -142,6 +167,9 @@ function buildContent(data: InvoiceData): string {
   out += text(W - 200, y, 8, "R", "BETAALWIJZE", MUTED);
   out += text(W - 200, y - 16, 11, "R", data.paymentMethod ?? "card");
   if (data.reference) out += text(W - 200, y - 30, 9.5, "R", `Ref. ${data.reference}`, MUTED);
+  if (data.transactionId) {
+    out += text(W - 200, y - 42, 8.5, "R", `Transactie ${data.transactionId.slice(0, 34)}`, MUTED);
+  }
 
   y = Math.min(cy, y - 44) - 42;
   out += text(56, y, 8, "R", "OMSCHRIJVING", MUTED);
@@ -157,11 +185,19 @@ function buildContent(data: InvoiceData): string {
     out += line(56, y, W - 56, y, 0.25);
   }
 
-  if (typeof data.vatCents === "number") {
-    y -= 24;
-    out += text(W - 260, y, 9.5, "R", "BTW", MUTED);
-    out += text(W - 140, y, 9.5, "R", money(data.vatCents, currency), MUTED);
-  }
+  // Alle ROUT-prijzen zijn btw-inclusief: netto en btw worden teruggerekend
+  // vanaf het totaal, zodat de som altijd exact het betaalde bedrag geeft.
+  const rate = data.vatRatePercent ?? DEFAULT_VAT_RATE;
+  const split = vatBreakdown(data.totalCents, rate);
+  const vatCents = typeof data.vatCents === "number" ? data.vatCents : split.vatCents;
+  const netCents = data.totalCents - vatCents;
+
+  y -= 26;
+  out += text(W - 260, y, 9.5, "R", "Netto", MUTED);
+  out += text(W - 140, y, 9.5, "R", money(netCents, currency), MUTED);
+  y -= 16;
+  out += text(W - 260, y, 9.5, "R", `BTW ${rate}%`, MUTED);
+  out += text(W - 140, y, 9.5, "R", money(vatCents, currency), MUTED);
 
   y -= 34;
   out += line(W - 280, y + 16, W - 56, y + 16);
@@ -169,7 +205,9 @@ function buildContent(data: InvoiceData): string {
   out += text(W - 140, y, 12, "B", money(data.totalCents, currency));
 
   out += line(56, 96, W - 56, 96, 0.25);
-  out += text(56, 78, 8, "R", "ROUT — rout.be — hallo@rout.be", MUTED);
+  const merchant = merchantDetails();
+  out += text(56, 78, 8, "R", `${merchant.name} — ${merchant.address} — ${merchant.email}`, MUTED);
+  out += text(56, 90, 8, "R", `BTW ${merchant.vat}`, MUTED);
   out += text(
     56,
     66,
