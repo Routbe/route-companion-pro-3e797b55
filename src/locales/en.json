@@ -69,6 +69,7 @@
   "admin.promo.saved_nomail": "Promo code {{code}} created (no e-mail sent)",
   "admin.promo.sms": "Send via SMS",
   "admin.promo.sms_body": "Your ROUT invite code: {{code}} — redeem it at rout.be",
+  "admin.promo.sms_sent": "Promo code text message sent to {{phone}}.",
   "admin.promo.submit": "Generate & send e-mail",
   "admin.promo.submit_save": "Create promo code",
   "admin.promo.subtitle": "Generate a discount code and send it to the customer in the right language.",

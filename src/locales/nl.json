@@ -69,6 +69,7 @@
   "admin.promo.saved_nomail": "Promocode {{code}} aangemaakt (geen e-mail verzonden)",
   "admin.promo.sms": "Verstuur via sms",
   "admin.promo.sms_body": "Je ROUT-uitnodigingscode: {{code}} — verzilver hem op rout.be",
+  "admin.promo.sms_sent": "SMS met promocode verzonden naar {{phone}}.",
   "admin.promo.submit": "Genereer & verstuur e-mail",
   "admin.promo.submit_save": "Promocode aanmaken",
   "admin.promo.subtitle": "Genereer een kortingscode en stuur die meteen in de juiste taal naar de klant.",

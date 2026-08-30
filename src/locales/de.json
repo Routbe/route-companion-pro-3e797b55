@@ -69,6 +69,7 @@
   "admin.promo.saved_nomail": "Promo code {{code}} created (no e-mail sent)",
   "admin.promo.sms": "Per SMS senden",
   "admin.promo.sms_body": "Dein ROUT-Einladungscode: {{code}} — löse ihn auf rout.be ein",
+  "admin.promo.sms_sent": "SMS mit Promocode an {{phone}} gesendet.",
   "admin.promo.submit": "Generieren & E-Mail senden",
   "admin.promo.submit_save": "Promo-Code erstellen",
   "admin.promo.subtitle": "Generate a discount code and send it to the customer in the right language.",
