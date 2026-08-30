@@ -17,6 +17,8 @@ export interface OgCardInput {
   avatarUrl: string | null;
   /** Optioneel: "rout.be/u/alias" i.p.v. "rout.be/handle". */
   urlLabel?: string;
+  /** Aliasprofiel: toont het Privacy Shield-schild i.p.v. het vinkje. */
+  alias?: boolean;
 }
 
 export function escapeXml(value: string) {
@@ -62,12 +64,20 @@ export function ogSvg(input: OgCardInput) {
     : `<circle cx="150" cy="315" r="90" fill="#12100D" fill-opacity="0.85" stroke="${escapeXml(input.accent)}" stroke-opacity="0.7" stroke-width="4"/>
        <text x="150" y="340" text-anchor="middle" font-family="Inter" font-size="64" font-weight="600" fill="${escapeXml(input.accent)}">${escapeXml(initials(input.name))}</text>`;
 
+  // Geverifieerd: het officiële vinkje. Alias: het Privacy Shield-schild, zodat
+  // een gedeelde aliaslink meteen leest als afgeschermde identiteit.
+  const badgeX = 300 + Math.min(input.name.length, 24) * 23;
   const check = input.verified
-    ? `<g transform="translate(${300 + Math.min(input.name.length, 24) * 23} 232)">
+    ? `<g transform="translate(${badgeX} 232)">
          <circle r="20" fill="${escapeXml(input.accent)}"/>
          <path d="M-9 1 -2 8 9 -6" fill="none" stroke="#0f0f11" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
        </g>`
-    : "";
+    : input.alias
+      ? `<g transform="translate(${badgeX} 232)">
+           <path d="M0 -21 16 -14 16 2 0 21 -16 2 -16 -14Z" fill="#0f0f11" fill-opacity="0.65" stroke="${escapeXml(input.accent)}" stroke-width="3" stroke-linejoin="round"/>
+           <path d="M-7 -1 -2 5 8 -8" fill="none" stroke="${escapeXml(input.accent)}" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+         </g>`
+      : "";
 
   const urlLabel = input.urlLabel ?? `rout.be/${input.handle}`;
 
@@ -91,6 +101,6 @@ export function ogSvg(input: OgCardInput) {
     )
     .join("")}
   <g transform="translate(1040 470) scale(0.9)">${routRabbitMarkup(input.accent)}</g>
-  <text x="60" y="566" font-family="Inter" font-size="22" letter-spacing="6" fill="#8A8A94">ROUT — SOEVEREINE IDENTITEIT</text>
+  <text x="60" y="566" font-family="Inter" font-size="22" letter-spacing="6" fill="#8A8A94">POWERED BY ROUT — SOVEREIGN QR &amp; IDENTITY</text>
 </svg>`;
 }
