@@ -6,7 +6,6 @@ import {
   Settings,
   ChevronDown,
   ShieldCheck,
-  User,
   BadgeCheck,
   Shield,
   Sparkles,
@@ -23,7 +22,6 @@ import { Button } from "@/components/ui/button";
 import { useRouterState } from "@tanstack/react-router";
 import { Link, useNavigate } from "@/lib/router-compat";
 import { useUrlStyle } from "@/hooks/useUrlStyle";
-import { styledProfilePath } from "@/lib/profile-url";
 import { useIdentitySpace } from "@/hooks/useIdentitySpace";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin, clearAdminRoleCache } from "@/hooks/useIsAdmin";
@@ -37,7 +35,6 @@ import { getMyAccount } from "@/lib/account.functions";
  */
 export function ProfileMenu() {
   const { user, signOut, loading } = useAuth();
-  const { style: urlStyle } = useUrlStyle();
 
   const nav = useNavigate();
   const [fullName, setFullName] = useState<string | null>(null);
