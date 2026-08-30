@@ -6,7 +6,6 @@ import {
   Settings,
   ChevronDown,
   ShieldCheck,
-  User,
   BadgeCheck,
   Shield,
   Sparkles,
@@ -22,8 +21,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { useRouterState } from "@tanstack/react-router";
 import { Link, useNavigate } from "@/lib/router-compat";
-import { useUrlStyle } from "@/hooks/useUrlStyle";
-import { styledProfilePath } from "@/lib/profile-url";
 import { useIdentitySpace } from "@/hooks/useIdentitySpace";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin, clearAdminRoleCache } from "@/hooks/useIsAdmin";
@@ -37,7 +34,6 @@ import { getMyAccount } from "@/lib/account.functions";
  */
 export function ProfileMenu() {
   const { user, signOut, loading } = useAuth();
-  const { style: urlStyle } = useUrlStyle();
 
   const nav = useNavigate();
   const [fullName, setFullName] = useState<string | null>(null);
@@ -123,7 +119,6 @@ export function ProfileMenu() {
       ? "Pro"
       : "Free";
   const isPaidTier = tierLabel !== "Free";
-  const profilePath = styledProfilePath(handle, urlStyle);
   const verifiedPath = `/${handle}`;
   const aliasPath = `/u/${handle}`;
 
@@ -175,7 +170,7 @@ export function ProfileMenu() {
               <DropdownMenuItem
                 onClick={() => {
                   select("verified");
-                  nav("/studio");
+                  nav(verifiedPath);
                 }}
                 className="gap-2"
               >
@@ -196,7 +191,7 @@ export function ProfileMenu() {
               <DropdownMenuItem
                 onClick={() => {
                   select("alias");
-                  nav("/studio");
+                  nav(aliasPath);
                 }}
                 className="gap-2"
               >
@@ -232,17 +227,6 @@ export function ProfileMenu() {
           )}
           <DropdownMenuSeparator />
 
-          <DropdownMenuItem onClick={() => nav("/studio")} className="gap-2">
-            <User className="h-4 w-4 shrink-0" aria-hidden />
-            <div className="flex flex-col">
-              <span>Profile Studio</span>
-              {/* Bij dual identity staan beide publieke links hierboven al: de
-                  hub-URL herhalen maakt de keuze alleen verwarrend. */}
-              {!verified && (
-                <span className="text-[11px] text-muted-foreground">rout.be{profilePath}</span>
-              )}
-            </div>
-          </DropdownMenuItem>
           <DropdownMenuItem onClick={() => nav("/dashboard")} className="gap-2">
             <LayoutDashboard className="h-4 w-4 shrink-0" aria-hidden /> Dashboard
           </DropdownMenuItem>

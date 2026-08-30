@@ -76,6 +76,21 @@ export function normalizeName(value: string | null | undefined): string {
   return tokens.sort().join(" ");
 }
 
+/**
+ * Same normalisation, but keeps the noise words and glues everything together:
+ * "Van den Berg", "van den berg" and "Vandenberg" all become "vandenberg".
+ * Banks and members write compound surnames both ways, so this compact form
+ * keeps a purely typographic difference out of the review queue.
+ */
+export function compactName(value: string | null | undefined): string {
+  if (!value) return "";
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+}
+
 /** Tokens of a normalised name. */
 function tokensOf(value: string): string[] {
   return value.length === 0 ? [] : value.split(" ");
@@ -164,7 +179,14 @@ export function matchPayerName(
   const coverage =
     Math.min(payerTokens.length, holderTokens.length) /
     Math.max(payerTokens.length, holderTokens.length);
-  const raw = Math.max(overlap * (0.55 + 0.45 * coverage) * 0.85 + edit * 0.15, edit);
+  // Spacing-only differences ("Van den Berg" vs "Vandenberg") must not cost
+  // anything: compare the glued forms as an extra candidate.
+  const compact = editRatio(compactName(payerName), compactName(holderName));
+  const raw = Math.max(
+    overlap * (0.55 + 0.45 * coverage) * 0.85 + edit * 0.15,
+    edit,
+    compact,
+  );
   const score = Math.round(raw * 100) / 100;
 
   const verdict: NameMatchVerdict =
