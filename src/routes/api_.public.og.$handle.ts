@@ -79,6 +79,7 @@ export const Route = createFileRoute("/api_/public/og/$handle")({
                 verified,
                 accent,
                 bg: "#131211",
+                alias: !verified,
                 avatarUrl: inlineAvatar,
                 ...(urlLabel ? { urlLabel } : {}),
               }),
@@ -100,6 +101,7 @@ export const Route = createFileRoute("/api_/public/og/$handle")({
           verified,
           accent,
           bg: "#131211",
+          alias: !verified,
           avatarUrl,
           ...(urlLabel ? { urlLabel } : {}),
         });
