@@ -95,7 +95,14 @@ export function PromoInvitePanel() {
         : t("admin.promo.saved_nomail", { code: result.code });
       setConfirmation(message);
       setLastCode(result.code);
-      notifySuccess(message);
+      // De code bestaat, maar bezorging kan alsnog geweigerd zijn (ontbrekende
+      // of ongeldige BREVO_API_KEY, ongeldig nummer). Dat mag nooit stil blijven.
+      if (result.error) {
+        setConfirmation(`${message} — ${result.error}`);
+        notifyError(result.error);
+      } else {
+        notifySuccess(message);
+      }
       setCode("");
       void refresh();
       return { code: result.code, texted: result.texted === true };
