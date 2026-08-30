@@ -23,6 +23,8 @@ import {
   type EmailCategory,
 } from "./template-ids";
 
+import { brevoKeyStatus, describeBrevoFailure } from "@/lib/brevo-key";
+
 const BREVO_ENDPOINT = "https://api.brevo.com/v3/smtp/email";
 
 export interface MailOptions {
@@ -53,8 +55,7 @@ export interface AdminAlertParams {
 }
 
 function brevoKey(): string | null {
-  const key = process.env["BREVO_API_KEY"];
-  return key && key.trim().length > 0 ? key.trim() : null;
+  return brevoKeyStatus().key;
 }
 
 /** Visible sender; must be a domain verified in Brevo. */
@@ -130,7 +131,7 @@ async function postToBrevo(
 
       if (res.status !== 201 && !res.ok) {
         const detail = (await res.text().catch(() => "")).slice(0, 500);
-        lastError = `Brevo refused the message (${res.status}): ${detail}`;
+        lastError = describeBrevoFailure(res.status, detail);
         console.error(`[Mailer] ${label} failed [${res.status}]`, {
           correlationId,
           try: `${try_}/${MAX_ATTEMPTS}`,
@@ -255,14 +256,15 @@ interface Attempt {
  * Every failing step logs the exact Brevo status/body and alerts the admin.
  */
 export async function sendMail(opts: MailOptions): Promise<{ sent: boolean; error?: string }> {
-  const key = brevoKey();
+  const { key, error: keyError } = brevoKeyStatus();
   const correlationId = opts.correlationId ?? newCorrelationId();
   if (!key) {
-    console.error("[Mailer] Missing BREVO_API_KEY — no transactional mail can be sent", {
+    console.error(`[Mailer] ${keyError}`, {
+      correlationId,
       subject: opts.subject,
       to: maskEmail(opts.to),
     });
-    return { sent: false, error: "No e-mail sender is configured for this deployment yet." };
+    return { sent: false, error: keyError ?? "E-mailverzending is niet geconfigureerd." };
   }
 
   const base: Record<string, unknown> = {
