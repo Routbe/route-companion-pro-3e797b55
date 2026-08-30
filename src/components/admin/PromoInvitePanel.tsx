@@ -61,8 +61,11 @@ export function PromoInvitePanel() {
     void refresh();
   }, [refresh]);
 
-  /** Creates (or updates) the code. `withEmail` decides whether we also mail it. */
-  const save = async (withEmail: boolean): Promise<string | null> => {
+  /**
+   * Maakt (of werkt) de code bij. `withEmail`/`withPhone` bepalen of de server
+   * de code ook meteen per e-mail of SMS verstuurt.
+   */
+  const save = async (withEmail: boolean, withPhone = false): Promise<{ code: string; texted: boolean } | null> => {
     setBusy(true);
     setConfirmation(null);
     try {
@@ -79,6 +82,7 @@ export function PromoInvitePanel() {
           ...(maxRedemptions ? { maxRedemptions: Number(maxRedemptions) } : {}),
           ...(expiresAt ? { expiresAt } : {}),
           ...(withEmail && email.trim() ? { email: email.trim() } : {}),
+          ...(withPhone && phone.trim() ? { phone: phone.trim() } : {}),
           language,
         },
       });
@@ -94,7 +98,7 @@ export function PromoInvitePanel() {
       notifySuccess(message);
       setCode("");
       void refresh();
-      return result.code;
+      return { code: result.code, texted: result.texted === true };
     } catch (error) {
       notifyError(error instanceof Error ? error.message : t("admin.promo.err"));
       return null;
@@ -104,7 +108,7 @@ export function PromoInvitePanel() {
   };
 
   const copyCode = async () => {
-    const value = lastCode ?? (await save(false));
+    const value = lastCode ?? (await save(false))?.code;
     if (!value) return;
     try {
       await navigator.clipboard.writeText(value);
@@ -121,8 +125,14 @@ export function PromoInvitePanel() {
       notifyError(t("admin.promo.phone_required"));
       return;
     }
-    const value = await save(false);
-    if (!value) return;
+    const saved = await save(false, true);
+    if (!saved) return;
+    const value = saved.code;
+    // Verstuurd via de provider? Dan is de berichten-app niet meer nodig.
+    if (saved.texted) {
+      notifySuccess(t("admin.promo.sms_sent", { phone: phone.trim() }));
+      return;
+    }
     const body = t("admin.promo.sms_body", { code: value });
     const number = phone.replace(/[^\d+]/g, "");
     // iOS wil `&body=`, Android `?body=` — beide accepteren `?&body=`.

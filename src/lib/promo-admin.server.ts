@@ -19,6 +19,8 @@ export interface CreatePromoInput {
   maxRedemptions?: number | null;
   expiresAt?: string | null;
   email?: string | null;
+  /** Optioneel: stuur de code ook per SMS. */
+  phone?: string | null;
   language?: string | null;
 }
 
@@ -138,7 +140,16 @@ export interface CreatePromoResult {
   ok: boolean;
   code: string;
   emailed: boolean;
+  texted?: boolean;
   error?: string;
+}
+
+/** Korte SMS-tekst met de ingevulde promocode. */
+function smsText(language: EmailLanguage, code: string, discount: string, expires: string | null): string {
+  const copy = COPY[language];
+  return [copy.intro, `${code} (${discount})`, expires ? copy.validity(expires) : null]
+    .filter(Boolean)
+    .join(" ");
 }
 
 /** Creates (or upserts) the promo code and optionally mails it to a customer. */
@@ -184,8 +195,8 @@ export async function createPromoAndInvite(input: CreatePromoInput): Promise<Cre
   `;
 
   const email = input.email?.trim() ?? "";
-  if (!email) return { ok: true, code, emailed: false };
-
+  const phone = input.phone?.trim() ?? "";
+  if (!email && !phone) return { ok: true, code, emailed: false, texted: false };
 
   const language = asEmailLanguage(input.language);
   const discount = discountLabel(percentOff, amountOffCents, language);
@@ -194,6 +205,23 @@ export async function createPromoAndInvite(input: CreatePromoInput): Promise<Cre
         new Date(expiresAt),
       )
     : null;
+
+  const errors: string[] = [];
+  let texted = false;
+  if (phone) {
+    const { sendSms } = await import("./sms.server");
+    const sms = await sendSms({
+      to: phone,
+      text: smsText(language, code, discount, expiresLabel),
+      tag: "promo-invite",
+    });
+    texted = sms.sent;
+    if (sms.error) errors.push(sms.error);
+  }
+
+  if (!email) {
+    return { ok: true, code, emailed: false, texted, ...(errors[0] ? { error: errors[0] } : {}) };
+  }
 
   const result = await sendMail({
     to: email,
@@ -210,7 +238,14 @@ export async function createPromoAndInvite(input: CreatePromoInput): Promise<Cre
     tags: ["promo-invite"],
   });
 
-  return { ok: true, code, emailed: result.sent, ...(result.error ? { error: result.error } : {}) };
+  if (result.error) errors.push(result.error);
+  return {
+    ok: true,
+    code,
+    emailed: result.sent,
+    texted,
+    ...(errors[0] ? { error: errors.join(" | ") } : {}),
+  };
 }
 
 /** Most recently created promo codes, for the admin overview table. */

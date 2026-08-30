@@ -212,6 +212,16 @@ export async function applyStripeEvent(event: StripeEvent): Promise<string> {
     confirmRecurringDonation,
   } = await import("./verification.server");
 
+  // Identiteit telt alleen wanneer de bank de naam bevestigt. Zonder sterke
+  // match blijft de betaling `processing` en gaat ze naar handmatige review.
+  const { verifyStripePayerName } = await import("./stripe-payer-name.server");
+  const activateIfPayerMatches = async (ref: string | null, label: string) => {
+    const verdict = await verifyStripePayerName({ paymentId, reference: ref });
+    if (!verdict.ok) return `held for review (${verdict.reason})`;
+    await activateVerification(paymentId, ref);
+    return label;
+  };
+
   switch (event.type) {
     case "checkout.session.completed": {
       const status = stringOf(object, "payment_status");
@@ -221,13 +231,11 @@ export async function applyStripeEvent(event: StripeEvent): Promise<string> {
         await markPaymentStatus(paymentId, "processing", ref);
         return "sepa payment processing";
       }
-      await activateVerification(paymentId, ref);
-      return "activated";
+      return await activateIfPayerMatches(ref, "activated");
     }
 
     case "checkout.session.async_payment_succeeded": {
-      await activateVerification(paymentId, stringOf(object, "id"));
-      return "activated (async)";
+      return await activateIfPayerMatches(stringOf(object, "id"), "activated (async)");
     }
 
     case "checkout.session.async_payment_failed": {
@@ -245,9 +253,12 @@ export async function applyStripeEvent(event: StripeEvent): Promise<string> {
     // Zonder deze takken bleef een geslaagde redirect-betaling onbevestigd —
     // geen activering, geen bevestigingsmail.
     case "payment_intent.succeeded": {
-      await activateVerification(paymentId, stringOf(object, "id"));
-      return "activated (payment_intent)";
+      return await activateIfPayerMatches(
+        stringOf(object, "id"),
+        "activated (payment_intent)",
+      );
     }
+
 
     case "payment_intent.processing": {
       await markPaymentStatus(paymentId, "processing", stringOf(object, "id"));
