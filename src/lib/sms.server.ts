@@ -5,6 +5,8 @@
  * providerfout erin, zodat een mislukte SMS geen webhook of adminactie breekt.
  */
 
+import { brevoKeyStatus, describeBrevoFailure } from "./brevo-key";
+
 const BREVO_SMS_ENDPOINT = "https://api.brevo.com/v3/transactionalSMS/sms";
 const MAX_ATTEMPTS = 3;
 const BACKOFF_MS = [400, 1200];
@@ -12,8 +14,7 @@ const BACKOFF_MS = [400, 1200];
 const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 function brevoKey(): string | null {
-  const key = process.env["BREVO_API_KEY"];
-  return key && key.trim().length > 0 ? key.trim() : null;
+  return brevoKeyStatus().key;
 }
 
 /** Afzendernaam mag maximaal 11 alfanumerieke tekens zijn bij Brevo. */
@@ -50,8 +51,11 @@ export async function sendSms(options: {
   text: string;
   tag?: string;
 }): Promise<SmsResult> {
-  const key = brevoKey();
-  if (!key) return { sent: false, error: "SMS is niet geconfigureerd (BREVO_API_KEY ontbreekt)." };
+  const { key, error: keyError } = brevoKeyStatus();
+  if (!key) {
+    console.error(`[sms] ${keyError}`);
+    return { sent: false, error: keyError ?? "SMS is niet geconfigureerd." };
+  }
 
   const recipient = normalizePhone(options.to);
   if (!recipient) return { sent: false, error: "Ongeldig telefoonnummer." };
@@ -78,8 +82,9 @@ export async function sendSms(options: {
       });
       if (res.ok) return { sent: true };
       const text = await res.text();
-      lastError = `SMS ${res.status}: ${text.slice(0, 300)}`;
+      lastError = describeBrevoFailure(res.status, text);
       console.error("[sms] verzenden mislukt", { status: res.status, body: text.slice(0, 300) });
+      // 401/403 zijn configuratiefouten: opnieuw proberen heeft geen zin.
       const transient = res.status === 408 || res.status === 429 || res.status >= 500;
       if (!transient) return { sent: false, error: lastError };
     } catch (error) {
